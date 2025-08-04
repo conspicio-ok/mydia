@@ -1,3 +1,5 @@
 *.DS_Store
 .env
 /nginx/auth/.htpasswd
+/nginx/ssl/live/localhost/*
+/media/music/*

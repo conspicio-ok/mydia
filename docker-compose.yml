@@ -1,0 +1,139 @@
+services:
+  wireguard:
+    image: linuxserver/wireguard:latest
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Paris
+      - SERVERURL=${IP_SERVER}
+      - SERVERPORT=51820
+      - PEERS=client1
+      - PEERDNS=172.20.0.3
+      - INTERNAL_SUBNET=10.13.13.0
+      - ALLOWEDIPS=172.20.0.0/16
+    volumes:
+      - ./wireguard-config:/config
+      - /lib/modules:/lib/modules
+    ports:
+      - 51820:51820/udp
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    depends_on:
+      - dnsmasq
+    restart: unless-stopped
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.2
+
+  dnsmasq:
+    image: jpillora/dnsmasq:latest
+    container_name: dnsmasq
+    environment:
+      - HTTP_USER=${DNS_USER}
+      - HTTP_PASS=${DNS_PASS}
+    volumes:
+      - ./dns/dnsmasq.conf:/etc/dnsmasq.conf:ro
+    ports:
+      - "53:53/udp"
+      - "8080:8080/tcp"
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.3
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./www/public:/app/www/public
+      - ./nginx/auth:/etc/user/auth
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - mkcert-generator
+      - streaming-server
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.4
+    restart: unless-stopped
+
+  mkcert-generator:
+    image: alpine:latest
+    container_name: mkcert-generator
+    volumes:
+      - ./nginx/ssl:/ssl
+      - ./mkcert:/mkcert
+    command: |
+      sh -c "
+        apk add --no-cache wget &&
+        cd /tmp &&
+        wget -O mkcert https://dl.filippo.io/mkcert/latest?for=linux/amd64 &&
+        chmod +x mkcert &&
+        mkdir -p /ssl/live/localhost &&
+        ./mkcert -install &&
+        ./mkcert -key-file /ssl/live/localhost/privkey.pem \
+                 -cert-file /ssl/live/localhost/fullchain.pem \
+                 mydia.com localhost 127.0.0.1 ::1 &&
+        cp /root/.local/share/mkcert/rootCA.pem /mkcert/
+      "
+    restart: "no"
+
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    environment:
+      - ND_SCANSCHEDULE=1h
+      - ND_LOGLEVEL=info
+      - ND_SESSIONTIMEOUT=24h
+      - ND_BASEURL=/app/navidrome/
+      - ND_ENABLETRANSCODINGCONFIG=true
+      - ND_MUSICFOLDER=/music
+      - ND_DATAFOLDER=/data
+      - ND_CACHEFOLDER=/cache
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - ./navidrome/data:/data
+      - ./navidrome/cache:/cache
+      - ./media/music:/music:ro
+    ports:
+      - "4533:4533"
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.5
+    restart: unless-stopped
+    depends_on:
+      - dnsmasq
+
+  streaming-server:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Paris
+    volumes:
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      - ./media/music:/media
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.6
+    restart: unless-stopped
+
+networks:
+  vpn_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
