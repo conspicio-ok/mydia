@@ -1,4 +1,5 @@
 const cookie = {}
+const api = {}
 
 
 cookie.get = function(name)
@@ -9,8 +10,17 @@ cookie.get = function(name)
 		?.split("=")[1];
 }
 
-const token = cookie.get("token");
-if (token)
-	console.log(token)
-else
-	document.cookie = "token=abc123; path=/; max-age=3600"; // expire dans 1h
+api.url = "https://mydia.com/api"
+
+api.getUser = async function () {
+	try
+	{
+		const res = await fetch(api.url + "/users")
+		const data = await res.json()
+		return data
+	}
+	catch (err)
+	{
+		console.error("Erreur fetch users:", err)
+	}
+}

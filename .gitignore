@@ -3,3 +3,4 @@
 /nginx/auth/.htpasswd
 /nginx/ssl/live/localhost/*
 /media/music/*
+/www/api/users.sqlite

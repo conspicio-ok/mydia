@@ -54,14 +54,14 @@ func main() {
 		route.Delete("/users/{username}", service.DeleteUser(db))
 	// })	
 
-	// route.Post("/auth/login", ah.Login)
+	route.Post("/auth/login", service.Login(db))
 	// Endpoint utilitaire pour proxy: valide le JWT cookie et renouvelle si nécessaire
-	route.Get("/auth/validate/{username}", service.GetToken(db))
+	// route.Get("/auth/validate/{username}", service.GetToken(db))
 
 	// srv := &http.Server{ Addr: conf.Bind, Handler: r }
 
-	log.Println("Server starting on :8080")
-    http.ListenAndServe(":8080", route)
+	log.Println("Server starting on :8090")
+    http.ListenAndServe(":8090", route)
 
 	// go func() {
 	// 	log.Println("listening on ", conf.Bind)

@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"log"
 	"regexp"
+	"crypto/sha256"
+	"encoding/hex"
 )
 
 // Av -> Available
@@ -27,4 +29,9 @@ func	StrongPassword(password string) bool {
 		return false
 	}
 	return true
+}
+
+func	hashPassword(password string) string {
+    hash := sha256.Sum256([]byte(password))
+    return hex.EncodeToString(hash[:])
 }

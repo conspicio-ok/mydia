@@ -5,33 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"encoding/hex"
-	"crypto/sha256"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 )
-
-type User struct {
-	Pseudo		string	`json:"pseudo"`
-	Password	string	`json:"password"`
-}
-
-type CreateUserResponse struct {
-	ID		int		`json:"id"`
-	Pseudo	string	`json:"pseudo"`
-	Message	string	`json:"message"`
-}
-
-type UpdateUserResponse struct {
-	Pseudo	string	`json:"pseudo"`
-	Message	string	`json:"message"`
-}
-
-func	hashPassword(password string) string {
-    hash := sha256.Sum256([]byte(password))
-    return hex.EncodeToString(hash[:])
-}
 
 func	ListUser(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
