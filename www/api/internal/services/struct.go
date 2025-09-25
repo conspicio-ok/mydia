@@ -1,5 +1,9 @@
 package service
 
+import (
+	"github.com/golang-jwt/jwt/v5"
+)
+
 type User struct {
 	Pseudo		string	`json:"pseudo"`
 	Password	string	`json:"password"`

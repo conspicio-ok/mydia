@@ -13,14 +13,14 @@ func	AvUsername(db *sql.DB, username string) bool {
 	var existingID int
 	checkQuery := "SELECT id FROM USERS WHERE pseudo = ?"
 	err := db.QueryRow(checkQuery, username).Scan(&existingID)
-	if (err != sql.ErrNoRows) {
-		return false
+	if (err == sql.ErrNoRows) {
+		return true
 	}
 	if (err != nil) {
 		log.Println("Servor Error")
 		return false
 	}
-	return true
+	return false
 }
 
 func	StrongPassword(password string) bool {

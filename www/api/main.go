@@ -1,14 +1,12 @@
 package main
 
 import (
-	// "os"
 	"mydia/internal/db"
 	"mydia/internal/services"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	// "context"
 	// "errors"
 	"log"
 	"net/http"

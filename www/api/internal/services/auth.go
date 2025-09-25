@@ -5,38 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 // 	"github.com/go-chi/chi/v5"
 )
-
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
-
-func CreateJWT(username string, isAdmin bool) (string, error) {
-    // Définir les claims
-    claims := JWTClaims{
-        Username: username,
-        Admin:  isAdmin,
-        RegisteredClaims: jwt.RegisteredClaims{
-            ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)), // Expire dans 30 * 24h
-            IssuedAt:  jwt.NewNumericDate(time.Now()),
-            NotBefore: jwt.NewNumericDate(time.Now()),
-            Issuer:    "mydia", // Nom de ton application
-        },
-    }
-    
-    // Créer le token avec les claims
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    
-    // Signer le token avec la clé secrète
-    tokenString, err := token.SignedString(jwtSecret)
-    if err != nil {
-        return "", err
-    }
-    
-    return tokenString, nil
-}
 
 func	Login(db *sql.DB) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +17,7 @@ func	Login(db *sql.DB) http.HandlerFunc {
         }
 
         var req User
+        var userId int
 		var	userPassword string
 		err := json.NewDecoder(r.Body).Decode(&req)
         if (err != nil) {
@@ -54,8 +26,8 @@ func	Login(db *sql.DB) http.HandlerFunc {
         }
         hashedPassword := hashPassword(req.Password)
 
-		getUserQuery := "SELECT passwd FROM USERS WHERE pseudo = ?;"
-        err = db.QueryRow(getUserQuery, req.Pseudo).Scan(&userPassword)
+		getUserQuery := "SELECT id, passwd FROM USERS WHERE pseudo = ?;"
+        err = db.QueryRow(getUserQuery, req.Pseudo).Scan(&userId, &userPassword)
 		if (err == sql.ErrNoRows) {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
@@ -71,16 +43,15 @@ func	Login(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		jwt, err := CreateJWT(req.Pseudo, true)
-		if (err != nil) {
-			log.Println("Error : ", err)
+		jwt := JWT(db, userId, req.Pseudo, true)
+		if (!jwt) {
 			http.Error(w, "Server Error", http.StatusInternalServerError)
 			return
 		}
 
         response := MessageResponse{
             Status:     "success",
-            Message:  	jwt,
+            Message:  	"jwt update",
         }
 
         w.Header().Set("Content-Type", "application/json")
@@ -114,7 +85,7 @@ func	Login(db *sql.DB) http.HandlerFunc {
 
 
 // // import (
-// //     "fmt"
+// //     
 // //     "github.com/golang-jwt/jwt/v5"
 // // )
 
