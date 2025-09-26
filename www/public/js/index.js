@@ -18,6 +18,14 @@ async function main()
 		let msg = document.getElementById('warning-message');
 		msg.innerHTML = '<p>No user found, please create new</p>';
 		msg.style.display = 'block';
+		document.getElementById("form").addEventListener('submit', async function(event) {
+			event.preventDefault();
+			const username = document.getElementById("username").value
+			const password = document.getElementById("password").value
+			const rpassword = document.getElementById("rpassword").value
+			if (password == rpassword)
+				console.log(await api.login(username, password));
+		});
 	}
 
 	// const userJWT = cookie.get("userJWT");

@@ -21,6 +21,28 @@ api.getUser = async function () {
 	}
 	catch (err)
 	{
-		console.error("Erreur fetch users:", err)
+		console.error("Error fetch users:", err)
+	}
+}
+
+api.login = async function (username, password) {
+	try
+	{
+		const res = await fetch(api.url + "/users", {
+			method: "post",
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				pseudo: username,
+				password: password
+			})
+		})
+		const data = await res.json()
+		return data
+	}
+	catch (err)
+	{
+		console.error("Error login :" + err)
 	}
 }

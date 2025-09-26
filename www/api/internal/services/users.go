@@ -94,7 +94,7 @@ func	CreateUser(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		if (AvUsername(db, req.Pseudo)) {
+		if (!AvUsername(db, req.Pseudo)) {
 			http.Error(w, "User already exist, please change your username", http.StatusConflict)
 			return
 		}
