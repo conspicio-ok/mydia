@@ -4,7 +4,7 @@
 /nginx/ssl/live/localhost/*
 /media/music/*
 /www/api/users.sqlite
-/www/api/go.mod
 /www/api/go.sum
 send.sh
 jellyfin
+/install.sh

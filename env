@@ -4,3 +4,7 @@ DNS_USER=admin
 DNS_PASS=admin
 
 JWT_SECRET=my_jwt_pass
+
+AUTHELIA_STORAGE_KEY=		# Génère : openssl rand -hex 32
+AUTHELIA_SESSION_SECRET=	# Génère : openssl rand -hex 32
+WGUI_PASSWORD_HASH=			# Génère : docker run --rm ghcr.io/wg-easy/wg-easy wgpw 'YourPassword'
