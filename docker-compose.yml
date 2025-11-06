@@ -3,7 +3,6 @@ services:
     image: ghcr.io/wg-easy/wg-easy:latest
     container_name: wg-easy
     environment:
-
       - LANG=fr
       - WG_HOST=${IP_SERVER}
       - PASSWORD_HASH=${WGUI_PASSWORD_HASH}
@@ -28,6 +27,13 @@ services:
     networks:
       vpn_network:
         ipv4_address: 172.20.0.10
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wg-easy.rule=Host(`wg.mydia.com`)"
+      - "traefik.http.routers.wg-easy.entrypoints=websecure"
+      - "traefik.http.routers.wg-easy.tls=true"
+      - "traefik.http.routers.wg-easy.middlewares=authelia@file"
+      - "traefik.http.services.wg-easy.loadbalancer.server.port=51821"
     depends_on:
       - dnsmasq
 
@@ -40,13 +46,30 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/etc/traefik
+      - ./nginx/ssl:/etc/ssl/certs:ro
     networks:
       vpn_network:
         ipv4_address: 172.20.0.11
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.mydia.com`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.middlewares=authelia@file"
 
   authelia:
     image: authelia/authelia:latest
@@ -61,6 +84,12 @@ services:
     restart: unless-stopped
     depends_on:
       - redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authelia.rule=Host(`auth.mydia.com`)"
+      - "traefik.http.routers.authelia.entrypoints=websecure"
+      - "traefik.http.routers.authelia.tls=true"
+      - "traefik.http.services.authelia.loadbalancer.server.port=9091"
 
   redis:
     image: redis:alpine
@@ -72,6 +101,27 @@ services:
         ipv4_address: 172.20.0.13
     restart: unless-stopped
 
+  homarr:
+    image: ghcr.io/ajnart/homarr:latest
+    container_name: homarr
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./homarr/configs:/app/data/configs
+      - ./homarr/icons:/app/public/icons
+      - ./homarr/data:/data
+    environment:
+      - TZ=Europe/Paris
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.14
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homarr.rule=Host(`mydia.com`) || Host(`home.mydia.com`)"
+      - "traefik.http.routers.homarr.entrypoints=websecure"
+      - "traefik.http.routers.homarr.tls=true"
+      - "traefik.http.routers.homarr.middlewares=authelia@file"
+      - "traefik.http.services.homarr.loadbalancer.server.port=7575"
 
   dnsmasq:
     image: jpillora/dnsmasq:latest
@@ -91,24 +141,24 @@ services:
     cap_add:
       - NET_ADMIN
 
-  nginx:
-    image: nginx:alpine
-    container_name: nginx
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./www/public:/app/www/public
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    expose:
-      - "80"
-      - "443"
-    depends_on:
-      - dnsmasq
-      - mkcert-generator
-      - navidrome
-    networks:
-      vpn_network:
-        ipv4_address: 172.20.0.4
-    restart: unless-stopped
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: nginx
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./www/public:/app/www/public
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #   expose:
+  #     - "80"
+  #     - "443"
+  #   depends_on:
+  #     - dnsmasq
+  #     - mkcert-generator
+  #     - navidrome
+  #   networks:
+  #     vpn_network:
+  #       ipv4_address: 172.20.0.4
+  #   restart: unless-stopped
 
   mkcert-generator:
     image: alpine:latest
@@ -147,6 +197,13 @@ services:
       - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - dnsmasq
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go-api.rule=Host(`api.mydia.com`)"
+      - "traefik.http.routers.go-api.entrypoints=websecure"
+      - "traefik.http.routers.go-api.tls=true"
+      - "traefik.http.routers.go-api.middlewares=authelia@file"
+      - "traefik.http.services.go-api.loadbalancer.server.port=8090"
 
   navidrome:
     image: deluan/navidrome:latest
@@ -160,7 +217,7 @@ services:
       - ND_MUSICFOLDER=/music
       - ND_DATAFOLDER=/data
       - ND_CACHEFOLDER=/cache
-      - ND_REVERSEPROXYUSERHEADER=X-Remote-User
+      - ND_REVERSEPROXYUSERHEADER=Remote-User
       - ND_REVERSEPROXYWHITELIST=172.0.0.0/8,10.0.0.0/8,192.168.0.0/16
       - PUID=1000
       - PGID=1000
@@ -176,6 +233,13 @@ services:
     restart: unless-stopped
     depends_on:
       - dnsmasq
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.navidrome.rule=Host(`music.mydia.com`)"
+      - "traefik.http.routers.navidrome.entrypoints=websecure"
+      - "traefik.http.routers.navidrome.tls=true"
+      - "traefik.http.routers.navidrome.middlewares=authelia@file"
+      - "traefik.http.services.navidrome.loadbalancer.server.port=4533"
 
   streaming-server:
     image: jellyfin/jellyfin:latest
@@ -192,6 +256,13 @@ services:
       vpn_network:
         ipv4_address: 172.20.0.6
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyfin.rule=Host(`stream.mydia.com`)"
+      - "traefik.http.routers.jellyfin.entrypoints=websecure"
+      - "traefik.http.routers.jellyfin.tls=true"
+      - "traefik.http.routers.jellyfin.middlewares=authelia@file"
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
 
 networks:
   vpn_network:
