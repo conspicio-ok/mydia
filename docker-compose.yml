@@ -8,10 +8,11 @@ services:
       - PASSWORD_HASH=${WGUI_PASSWORD_HASH}
       - PORT=51821
       - WG_PORT=51820
-      - WG_DEFAULT_ADDRESS=10.13.13.0
+      - WG_DEFAULT_ADDRESS=10.13.13.1
       - WG_DEFAULT_DNS=172.20.0.3
       - WG_ALLOWED_IPS=10.13.13.0/24,172.20.0.0/24
       - WG_PERSISTENT_KEEPALIVE=25
+      - WG_MTU=1420
     volumes:
       - ./wg-easy:/etc/wireguard
     ports:
@@ -41,24 +42,25 @@ services:
     image: traefik:v3.0
     container_name: traefik
     command:
-      - "--api.insecure=true"
-      - "--providers.docker=false"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
       - "--api.dashboard=true"
+      - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.http.tls=true"
+      - "--entrypoints.websecure.http.tls.certificates.certFile=/etc/ssl/certs/live/mydia.com/fullchain.pem"
+      - "--entrypoints.websecure.http.tls.certificates.keyFile=/etc/ssl/certs/live/mydia.com/privkey.pem"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik:/etc/traefik
       - ./nginx/ssl:/etc/ssl/certs:ro
+      - ./logs/traefik:/var/log/traefik
+      - ./traefik/acme.json:/etc/traefik/acme.json
     networks:
       vpn_network:
         ipv4_address: 172.20.0.11
@@ -70,6 +72,8 @@ services:
       - "traefik.http.routers.traefik.tls=true"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.middlewares=authelia@file"
+      - "traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/verify"
+      - "traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true"
 
   authelia:
     image: authelia/authelia:latest
@@ -111,6 +115,7 @@ services:
       - ./homarr/data:/data
     environment:
       - TZ=Europe/Paris
+      - AUTH_PROVIDER=none
     networks:
       vpn_network:
         ipv4_address: 172.20.0.14
@@ -141,25 +146,6 @@ services:
     cap_add:
       - NET_ADMIN
 
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: nginx
-  #   volumes:
-  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-  #     - ./www/public:/app/www/public
-  #     - ./nginx/ssl:/etc/nginx/ssl:ro
-  #   expose:
-  #     - "80"
-  #     - "443"
-  #   depends_on:
-  #     - dnsmasq
-  #     - mkcert-generator
-  #     - navidrome
-  #   networks:
-  #     vpn_network:
-  #       ipv4_address: 172.20.0.4
-  #   restart: unless-stopped
-
   mkcert-generator:
     image: alpine:latest
     container_name: mkcert-generator
@@ -178,32 +164,6 @@ services:
         cp /root/.local/share/mkcert/rootCA.pem /mkcert/
       "
     restart: "no"
-
-  go-api:
-    image: golang:1.23-alpine
-    container_name: go-api
-    working_dir: /app/api
-    volumes:
-      - ./www/api:/app/api
-    expose:
-      - "8090"
-    networks:
-      vpn_network:
-        ipv4_address: 172.20.0.7
-    restart: unless-stopped
-    command: sh -c "apk add --no-cache gcc musl-dev sqlite-dev && go mod tidy && go run ."
-    environment:
-      - PORT=8090
-      - JWT_SECRET=${JWT_SECRET}
-    depends_on:
-      - dnsmasq
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.go-api.rule=Host(`api.mydia.com`)"
-      - "traefik.http.routers.go-api.entrypoints=websecure"
-      - "traefik.http.routers.go-api.tls=true"
-      - "traefik.http.routers.go-api.middlewares=authelia@file"
-      - "traefik.http.services.go-api.loadbalancer.server.port=8090"
 
   navidrome:
     image: deluan/navidrome:latest

@@ -1,6 +1,5 @@
 ---
 users:
-  # Utilisateur 1
   admin:
     displayname: "Administrateur"
     password: "$argon2id$v=19$m=65536,t=3,p=4$W3jkVqd3/WbtekP7/yWwKA$Xu1i7o91wm/VYRcpo9Qm8fpLLIbwk3T1RUXsMjj5l5o"
@@ -8,7 +7,6 @@ users:
     groups:
       - admins
 
-  # Utilisateur 2 (exemple)
   user1:
     displayname: "User One"
     password: "$argon2id$v=19$m=65536,t=3,p=4$W3jkVqd3/WbtekP7/yWwKA$Xu1i7o91wm/VYRcpo9Qm8fpLLIbwk3T1RUXsMjj5l5o"

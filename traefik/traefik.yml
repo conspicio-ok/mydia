@@ -1,0 +1,47 @@
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: myresolver
+
+providers:
+  docker:
+    exposedByDefault: false
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+api:
+  dashboard: true
+  insecure: true
+
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/ssl/certs/live/mydia.com/fullchain.pem
+        keyFile: /etc/ssl/certs/live/mydia.com/privkey.pem
+
+log:
+  level: DEBUG
+  format: common
+
+accessLog:
+  filePath: /var/log/traefik/access.log
+  format: json
+
+# certificatesResolvers:
+#   myresolver:
+#     acme:
+#       email: ton@email.com
+#       storage: /etc/traefik/acme.json
+#       httpChallenge:
+#         entryPoint: web

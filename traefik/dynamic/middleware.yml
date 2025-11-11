@@ -9,9 +9,3 @@ http:
           - Remote-Groups
           - Remote-Name
           - Remote-Email
-
-  # Configuration TLS avec tes certificats mkcert
-  tls:
-    certificates:
-      - certFile: /etc/ssl/certs/live/mydia.com/fullchain.pem
-        keyFile: /etc/ssl/certs/live/mydia.com/privkey.pem

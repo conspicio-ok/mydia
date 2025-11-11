@@ -7,7 +7,6 @@ Mydia an ensemble of services to be independent.
 - VPN : wg-easy
 - Monitoring : traefik
 - SSO : authelia
-- : redis
 - Homepage : homarr
 - Music : navidrome
 - Streaming : jellyfin
@@ -17,7 +16,8 @@ Mydia an ensemble of services to be independent.
 - DNS : dnsmasq
 - Certificats : mkcert-generator
 - Network (bridge : 172.20.0.0/24)
-- go-api
+- : go-api
+- : redis
 
 ---
 
@@ -55,3 +55,17 @@ docker compose up -d
 
 and go to
 `http://YOUR_IP:51821/`
+
+## Warning
+
+### Wg-easy
+
+Maybe you have a bug (10.13.13.0) for the ip client, modify it to 10.13.13.2 and increment the next.
+Change the /24 to /32 !
+In interface section add `WG_MTU=1420`
+
+## Authelia
+
+Default password is `changeme`
+So PLEASE change it !
+But change equaly the name, display username, and the username
