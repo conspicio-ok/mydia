@@ -6,18 +6,16 @@ Mydia an ensemble of services to be independent.
 
 - VPN : wg-easy
 - Monitoring : traefik
-- SSO : authelia
+- SSO : authelia + redis
 - Homepage : homarr
 - Music : navidrome
 - Streaming : jellyfin
 
-## Unvisible services :
+### Unvisible services :
 
 - DNS : dnsmasq
 - Certificats : mkcert-generator
 - Network (bridge : 172.20.0.0/24)
-- : go-api
-- : redis
 
 ---
 
