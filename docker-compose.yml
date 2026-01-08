@@ -9,7 +9,7 @@ services:
       - PORT=51821
       - WG_PORT=51820
       - WG_DEFAULT_ADDRESS=10.13.13.1
-      - WG_DEFAULT_DNS=172.20.0.3
+      - WG_DEFAULT_DNS=1.1.1.1,8.8.8.8,172.20.0.3
       - WG_ALLOWED_IPS=10.13.13.0/24,172.20.0.0/24
       - WG_PERSISTENT_KEEPALIVE=25
       - WG_MTU=1420
@@ -72,8 +72,6 @@ services:
       - "traefik.http.routers.traefik.tls=true"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.middlewares=authelia@file"
-      - "traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/verify"
-      - "traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true"
 
   authelia:
     image: authelia/authelia:latest
@@ -170,7 +168,7 @@ services:
     container_name: navidrome
     environment:
       - ND_SCANSCHEDULE=1h
-      - ND_LOGLEVEL=info
+      - ND_LOGLEVEL=debug
       - ND_SESSIONTIMEOUT=24h
       - ND_BASEURL=/
       - ND_ENABLETRANSCODINGCONFIG=true
@@ -179,6 +177,8 @@ services:
       - ND_CACHEFOLDER=/cache
       - ND_REVERSEPROXYUSERHEADER=Remote-User
       - ND_REVERSEPROXYWHITELIST=172.0.0.0/8,10.0.0.0/8,192.168.0.0/16
+      - ND_DEVAUTOLOGINUSERNAME=${ND_DEFAULT_USER}
+      - ND_DEVAUTOCREATEADMINPASSWORD=${ND_DEFAULT_PASSWORD}
       - PUID=1000
       - PGID=1000
     volumes:
@@ -227,7 +227,9 @@ services:
 networks:
   vpn_network:
     driver: bridge
+    enable_ipv6: true
     ipam:
       config:
         - subnet: 172.20.0.0/24
           gateway: 172.20.0.1
+        - subnet: fd00::/64 

@@ -2,14 +2,16 @@
 users:
   admin:
     displayname: "Administrateur"
-    password: "$argon2id$v=19$m=65536,t=3,p=4$CHANGE_ME"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$esnjgVy8R1txpDIUl2FoIA$FDSoS14w6klA2/RCEMzbwyrgQx6RGD1mL/B93s89seM"
     email: change@email.example
     groups:
       - admins
 
   user1:
     displayname: "User One"
-    password: "$argon2id$v=19$m=65536,t=3,p=4$CHANGE_ME"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$esnjgVy8R1txpDIUl2FoIA$FDSoS14w6klA2/RCEMzbwyrgQx6RGD1mL/B93s89seM"
     email: change@email.example
     groups:
       - users
+      - iterations: 3
+      - salt_length: 16
