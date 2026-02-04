@@ -9,3 +9,4 @@ send.sh
 jellyfin
 /install.sh
 /authelia/users_database.yml
+**data

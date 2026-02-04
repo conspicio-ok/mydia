@@ -1,0 +1,24 @@
+# Changelog
+
+Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+
+Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
+et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
+
+Les modifications seront repartie selon trois categories :
+- **Added**
+- **Changed**
+- **Removed**
+
+Ces modifications seront alors sous une baniere : **[X.Y.Z] - YYYY-MM-DD**
+
+Les informations a transmettre d'un version a l'autre sont en **gras**,
+Toutes **informations** qui n'a pas ete traite doit etre transmise a nouveau
+
+
+## [0.0.0] - 2026-02-04
+
+### Added
+- create a backup and a navidrome docker compose
+
+Starting of the project

@@ -1,0 +1,16 @@
+networks:
+  frontend:
+    driver: bridge
+    external: true
+    
+  external:
+    driver: bridge
+    external: true
+    
+  monitoring:
+    driver: bridge
+    external: true
+    
+  backup:
+    driver: bridge
+    external: true

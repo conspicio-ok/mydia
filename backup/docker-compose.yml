@@ -1,0 +1,235 @@
+services:
+  wg-easy:
+    image: ghcr.io/wg-easy/wg-easy:latest
+    container_name: wg-easy
+    environment:
+      - LANG=fr
+      - WG_HOST=${IP_SERVER}
+      - PASSWORD_HASH=${WGUI_PASSWORD_HASH}
+      - PORT=51821
+      - WG_PORT=51820
+      - WG_DEFAULT_ADDRESS=10.13.13.1
+      - WG_DEFAULT_DNS=1.1.1.1,8.8.8.8,172.20.0.3
+      - WG_ALLOWED_IPS=10.13.13.0/24,172.20.0.0/24
+      - WG_PERSISTENT_KEEPALIVE=25
+      - WG_MTU=1420
+    volumes:
+      - ./wg-easy:/etc/wireguard
+    ports:
+      - "51820:51820/udp"
+      - "51821:51821/tcp"
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv4.ip_forward=1
+    restart: unless-stopped
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.10
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wg-easy.rule=Host(`wg.mydia.com`)"
+      - "traefik.http.routers.wg-easy.entrypoints=websecure"
+      - "traefik.http.routers.wg-easy.tls=true"
+      - "traefik.http.routers.wg-easy.middlewares=authelia@file"
+      - "traefik.http.services.wg-easy.loadbalancer.server.port=51821"
+    depends_on:
+      - dnsmasq
+
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    command:
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.http.tls=true"
+      - "--entrypoints.websecure.http.tls.certificates.certFile=/etc/ssl/certs/live/mydia.com/fullchain.pem"
+      - "--entrypoints.websecure.http.tls.certificates.keyFile=/etc/ssl/certs/live/mydia.com/privkey.pem"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik:/etc/traefik
+      - ./nginx/ssl:/etc/ssl/certs:ro
+      - ./logs/traefik:/var/log/traefik
+      - ./traefik/acme.json:/etc/traefik/acme.json
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.11
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.mydia.com`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.middlewares=authelia@file"
+
+  authelia:
+    image: authelia/authelia:latest
+    container_name: authelia
+    volumes:
+      - ./authelia:/config
+    environment:
+      - TZ=Europe/Paris
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.12
+    restart: unless-stopped
+    depends_on:
+      - redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authelia.rule=Host(`auth.mydia.com`)"
+      - "traefik.http.routers.authelia.entrypoints=websecure"
+      - "traefik.http.routers.authelia.tls=true"
+      - "traefik.http.services.authelia.loadbalancer.server.port=9091"
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    volumes:
+      - ./redis:/data
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.13
+    restart: unless-stopped
+
+  homarr:
+    image: ghcr.io/ajnart/homarr:latest
+    container_name: homarr
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./homarr/configs:/app/data/configs
+      - ./homarr/icons:/app/public/icons
+      - ./homarr/data:/data
+    environment:
+      - TZ=Europe/Paris
+      - AUTH_PROVIDER=none
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.14
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homarr.rule=Host(`mydia.com`) || Host(`home.mydia.com`)"
+      - "traefik.http.routers.homarr.entrypoints=websecure"
+      - "traefik.http.routers.homarr.tls=true"
+      - "traefik.http.routers.homarr.middlewares=authelia@file"
+      - "traefik.http.services.homarr.loadbalancer.server.port=7575"
+
+  dnsmasq:
+    image: jpillora/dnsmasq:latest
+    container_name: dnsmasq
+    environment:
+      - HTTP_USER=${DNS_USER}
+      - HTTP_PASS=${DNS_PASS}
+    volumes:
+      - ./dns/dnsmasq.conf:/etc/dnsmasq.conf:ro
+    expose:
+      - "53/udp"
+      - "53/tcp"
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.3
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+
+  mkcert-generator:
+    image: alpine:latest
+    container_name: mkcert-generator
+    volumes:
+      - ./nginx/ssl:/ssl
+      - ./mkcert:/mkcert
+    command: |
+      sh -c "
+        apk add --no-cache wget &&
+        cd /tmp &&
+        wget -O mkcert https://dl.filippo.io/mkcert/latest?for=linux/amd64 &&
+        chmod +x mkcert &&
+        mkdir -p /ssl/live/mydia.com &&
+        ./mkcert -install &&
+        ./mkcert -key-file /ssl/live/mydia.com/privkey.pem -cert-file /ssl/live/mydia.com/fullchain.pem mydia.com *.mydia.com localhost 127.0.0.1 ::1 &&
+        cp /root/.local/share/mkcert/rootCA.pem /mkcert/
+      "
+    restart: "no"
+
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    environment:
+      - ND_SCANSCHEDULE=1h
+      - ND_LOGLEVEL=debug
+      - ND_SESSIONTIMEOUT=24h
+      - ND_BASEURL=/
+      - ND_ENABLETRANSCODINGCONFIG=true
+      - ND_MUSICFOLDER=/music
+      - ND_DATAFOLDER=/data
+      - ND_CACHEFOLDER=/cache
+      - ND_REVERSEPROXYUSERHEADER=Remote-User
+      - ND_REVERSEPROXYWHITELIST=172.0.0.0/8,10.0.0.0/8,192.168.0.0/16
+      - ND_DEVAUTOLOGINUSERNAME=${ND_DEFAULT_USER}
+      - ND_DEVAUTOCREATEADMINPASSWORD=${ND_DEFAULT_PASSWORD}
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - ./navidrome/data:/data
+      - ./navidrome/cache:/cache
+      - ./media/music:/music:ro
+    expose:
+      - "4533"
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.5
+    restart: unless-stopped
+    depends_on:
+      - dnsmasq
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.navidrome.rule=Host(`music.mydia.com`)"
+      - "traefik.http.routers.navidrome.entrypoints=websecure"
+      - "traefik.http.routers.navidrome.tls=true"
+      - "traefik.http.routers.navidrome.middlewares=authelia@file"
+      - "traefik.http.services.navidrome.loadbalancer.server.port=4533"
+
+  streaming-server:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Paris
+    volumes:
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      - ./media/music:/media
+    networks:
+      vpn_network:
+        ipv4_address: 172.20.0.6
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyfin.rule=Host(`stream.mydia.com`)"
+      - "traefik.http.routers.jellyfin.entrypoints=websecure"
+      - "traefik.http.routers.jellyfin.tls=true"
+      - "traefik.http.routers.jellyfin.middlewares=authelia@file"
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+
+networks:
+  vpn_network:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
+        - subnet: fd00::/64 
