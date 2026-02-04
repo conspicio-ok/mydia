@@ -1,18 +1,14 @@
-version: '3.8'
-
 services:
   navidrome:
     image: deluan/navidrome:latest
     container_name: navidrome
     restart: unless-stopped
     
-    # Variables d'environnement
     environment:
-      # Configuration de base
       ND_SCANSCHEDULE: "1h"                    # Scan automatique toutes les heures
       ND_LOGLEVEL: "info"                      # Niveau de logs (debug, info, warn, error)
       ND_SESSIONTIMEOUT: "24h"                 # Durée de session
-      ND_BASEURL: ""                           # Sera rempli plus tard avec Traefik
+      ND_BASEURL: "/navidrome"                           # Sera rempli plus tard avec Traefik
       
       # Chemins internes
       ND_MUSICFOLDER: /music                   # Dossier musique dans le container
@@ -21,7 +17,6 @@ services:
       # Optionnel : Activer scan au démarrage
       ND_SCANONSTART: "true"
       
-    # Montage des volumes
     volumes:
       # Données persistantes de Navidrome (base de données, cache, etc.)
       - ./data/navidrome:/data
@@ -31,28 +26,23 @@ services:
 #      - ./music:/music:ro                      # :ro = read-only pour sécurité
       - /mnt/hetzner/Music:/music:ro                      # :ro = read-only pour sécurité
     
-    # Ports exposés (uniquement en local pour l'instant)
-    ports:
-      - "4533:4533"                            # Port web interface
+    expose:
+      - "4533"
     
-    # Réseau (on utilisera un réseau custom plus tard)
     networks:
-      - homeserver
+      - homeserver_network
     
-    # Labels pour futures intégrations
     labels:
-      # Identification du service
       - "homeserver.service=navidrome"
       - "homeserver.type=media"
       - "homeserver.zone=frontend"
 
-# Déclaration des réseaux
-networks:
-  homeserver:
-    name: homeserver_network
-    driver: bridge
+      - "traefik.enable=true"
+      - "traefik.http.routers.navidrome.rule=Host(`navidrome.homeserver.local`)"
+      - "traefik.http.routers.navidrome.entrypoints=web"
+      - "traefik.http.services.navidrome.loadbalancer.server.port=4533"
 
-# Déclaration des volumes (optionnel, pour gestion explicite)
-volumes:
-  navidrome_data:
-    driver: local
+networks:
+  homeserver_network:
+    external: true
+

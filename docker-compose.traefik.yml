@@ -1,0 +1,58 @@
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    
+    command:
+      # === Configuration générale ===
+      - "--api.dashboard=true"                          # Active le dashboard Traefik
+      - "--api.insecure=true"                           # Dashboard accessible sans auth (pour test uniquement)
+      
+      # === Providers ===
+      - "--providers.docker=true"                       # Active l'auto-discovery Docker
+      - "--providers.docker.exposedbydefault=false"     # IMPORTANT: Les services doivent opt-in via labels
+      - "--providers.docker.network=homeserver_network" # Réseau à surveiller
+      
+      # === Entry Points (ports d'entrée) ===
+      - "--entrypoints.web.address=:80"                 # HTTP sur port 80
+      - "--entrypoints.websecure.address=:443"          # HTTPS sur port 443 (futur)
+      
+      # === Logs ===
+      - "--log.level=INFO"                              # Niveau de logs (DEBUG pour troubleshoot)
+      - "--accesslog=true"                              # Logs d'accès
+    
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    
+    volumes:
+      # Socket Docker pour auto-discovery
+      # IMPORTANT: Traefik lit les infos des containers via ce socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      
+      # Configuration dynamique (optionnel, pour configs manuelles)
+      - ./config/traefik:/etc/traefik
+      
+      # Certificats SSL (pour futur HTTPS)
+      - ./data/traefik/certs:/certs
+    
+    networks:
+      - homeserver_network
+    
+    labels:
+      - "homeserver.service=traefik"
+      - "homeserver.type=core"
+      - "homeserver.zone=core"
+      
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.homeserver.local`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=web"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+
+networks:
+  homeserver_network:
+    name: homeserver_network
+    driver: bridge
+

@@ -16,6 +16,28 @@ Les informations a transmettre d'un version a l'autre sont en **gras**,
 Toutes **informations** qui n'a pas ete traite doit etre transmise a nouveau
 
 
+## [0.0.1] - 2026-02-04
+
+### Added
+- create a docker compose for traefik
+
+### Changed
+- Add label for navidrome can connect with traefik
+
+```bash
+curl -H "Host: navidrome.homeserver.local" http://localhost
+```
+```bash
+curl -H "Host: traefik.homeserver.local" http://localhost:8080
+```
+Pas de dns pour l'instant les ip sont :
+```text
+localhost:8080
+```
+```text
+172.18.0.3:4533
+```
+
 ## [0.0.0] - 2026-02-04
 
 ### Added
