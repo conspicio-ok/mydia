@@ -16,6 +16,19 @@ Les informations a transmettre d'un version a l'autre sont en **gras**,
 Toutes **informations** qui n'a pas ete traite doit etre transmise a nouveau
 
 
+## [0.0.2] - 2026
+
+### Added
+- create a docker compose for authentik (LDAP system)
+
+### Changed
+- Adapt the other services to use the SSO
+
+ip authentik :
+```text
+http://172.18.0.5:9000/
+```
+
 ## [0.0.1] - 2026-02-04
 
 ### Added

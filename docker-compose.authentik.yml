@@ -1,0 +1,179 @@
+services:
+  # Base de données PostgreSQL pour Authentik
+  postgresql:
+    image: postgres:16-alpine
+    container_name: authentik-db
+    restart: unless-stopped
+    
+    environment:
+      POSTGRES_DB: authentik
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: ${PG_PASS}  # À définir dans .env
+    
+    volumes:
+      - ./data/authentik/postgres:/var/lib/postgresql/data
+    
+    networks:
+      - homeserver_network
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authentik"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis pour le cache et les sessions
+  redis:
+    image: redis:7-alpine
+    container_name: authentik-redis
+    restart: unless-stopped
+    
+    command: --save 60 1 --loglevel warning
+    
+    volumes:
+      - ./data/authentik/redis:/data
+    
+    networks:
+      - homeserver_network
+    
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Authentik Server (Core)
+  authentik-server:
+    image: ghcr.io/goauthentik/server:latest
+    container_name: authentik-server
+    restart: unless-stopped
+    
+    command: server
+    
+    environment:
+      # PostgreSQL
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
+      
+      # Redis
+      AUTHENTIK_REDIS__HOST: redis
+      
+      # Secret key (générer avec: openssl rand -base64 60)
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      
+      # Configuration serveur
+      AUTHENTIK_LISTEN__HTTP: 0.0.0.0:9000
+      AUTHENTIK_LISTEN__HTTPS: 0.0.0.0:9443
+      
+      # Email (optionnel, pour notifications)
+      # AUTHENTIK_EMAIL__HOST: smtp.example.com
+      # AUTHENTIK_EMAIL__PORT: 587
+      # AUTHENTIK_EMAIL__USERNAME: noreply@homeserver.local
+      # AUTHENTIK_EMAIL__PASSWORD: ${EMAIL_PASSWORD}
+      # AUTHENTIK_EMAIL__FROM: noreply@homeserver.local
+      # AUTHENTIK_EMAIL__USE_TLS: true
+      
+      # Branding (optionnel)
+      AUTHENTIK_BRANDING__TITLE: "Homeserver SSO"
+      AUTHENTIK_BRANDING__LOGO: "/static/dist/assets/icons/icon.png"
+    
+    volumes:
+      - ./data/authentik/media:/media
+      - ./data/authentik/templates:/templates
+    
+    expose:
+      - "9000"
+      - "9443"
+    
+    networks:
+      - homeserver_network
+    
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    
+    labels:
+      # Homeserver metadata
+      - "homeserver.service=authentik"
+      - "homeserver.type=core"
+      - "homeserver.zone=core"
+      
+      # Traefik config
+      - "traefik.enable=true"
+      
+      # Router pour l'interface web Authentik
+      - "traefik.http.routers.authentik.rule=Host(`auth.homeserver.local`)"
+      - "traefik.http.routers.authentik.entrypoints=web"
+      - "traefik.http.services.authentik.loadbalancer.server.port=9000"
+      
+      # Middleware Forward Auth (pour les autres services)
+      - "traefik.http.middlewares.authentik.forwardauth.address=http://authentik-server:9000/outpost.goauthentik.io/auth/traefik"
+      - "traefik.http.middlewares.authentik.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.authentik.forwardauth.authResponseHeaders=X-authentik-username,X-authentik-groups,X-authentik-email,X-authentik-name,X-authentik-uid"
+
+  # Authentik Worker (tâches asynchrones)
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:latest
+    container_name: authentik-worker
+    restart: unless-stopped
+    
+    command: worker
+    
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+    
+    volumes:
+      - ./data/authentik/media:/media
+      - ./data/authentik/templates:/templates
+      - ./data/authentik/certs:/certs
+    
+    networks:
+      - homeserver_network
+    
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    
+    labels:
+      - "homeserver.service=authentik-worker"
+      - "homeserver.type=core"
+
+  # LDAP Outpost (pour apps avec support LDAP)
+  authentik-ldap:
+    image: ghcr.io/goauthentik/ldap:latest
+    container_name: authentik-ldap
+    restart: unless-stopped
+    
+    environment:
+      AUTHENTIK_HOST: http://authentik-server:9000
+      AUTHENTIK_INSECURE: "true"  # Pour HTTP (pas HTTPS)
+      AUTHENTIK_TOKEN: ${AUTHENTIK_LDAP_TOKEN}  # Token à générer dans Authentik UI
+    
+    ports:
+      - "389:3389"   # LDAP
+      - "636:6636"   # LDAPS (optionnel)
+    
+    networks:
+      - homeserver_network
+    
+    depends_on:
+      - authentik-server
+    
+    labels:
+      - "homeserver.service=authentik-ldap"
+      - "homeserver.type=core"
+
+networks:
+  homeserver_network:
+    external: true

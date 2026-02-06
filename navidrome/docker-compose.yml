@@ -10,12 +10,21 @@ services:
       ND_SESSIONTIMEOUT: "24h"                 # Durée de session
       ND_BASEURL: "/navidrome"                           # Sera rempli plus tard avec Traefik
       
-      # Chemins internes
       ND_MUSICFOLDER: /music                   # Dossier musique dans le container
       ND_DATAFOLDER: /data                     # Dossier données dans le container
       
-      # Optionnel : Activer scan au démarrage
       ND_SCANONSTART: "true"
+
+      ND_ENABLELDAPAUTH: "true"
+      ND_LDAPSERVER: "authentik-ldap:3389"
+      ND_LDAPBASEDN: "dc=ldap,dc=goauthentik,dc=io"
+      ND_LDAPBINDDN: "cn=ldap-service,ou=users,dc=ldap,dc=goauthentik,dc=io"
+      ND_LDAPBINDPASSWORD: "${LDAP_BIND_PASSWORD}"
+      ND_LDAPSEARCHFILTER: "(uid=%s)"
+	  ND_LDAPAUTOCREATE: "true"
+      ND_LDAPUSERNAMEATTR: "uid"
+      ND_LDAPEMAILATTR: "mail"
+      ND_LDAPNAMEATTR: "cn"
       
     volumes:
       # Données persistantes de Navidrome (base de données, cache, etc.)
@@ -41,6 +50,8 @@ services:
       - "traefik.http.routers.navidrome.rule=Host(`navidrome.homeserver.local`)"
       - "traefik.http.routers.navidrome.entrypoints=web"
       - "traefik.http.services.navidrome.loadbalancer.server.port=4533"
+
+      - "traefik.http.routers.navidrome.middlewares=authentik@docker"
 
 networks:
   homeserver_network:
