@@ -21,7 +21,7 @@ services:
       ND_LDAPBINDDN: "cn=ldap-service,ou=users,dc=ldap,dc=goauthentik,dc=io"
       ND_LDAPBINDPASSWORD: "${LDAP_BIND_PASSWORD}"
       ND_LDAPSEARCHFILTER: "(uid=%s)"
-	  ND_LDAPAUTOCREATE: "true"
+      ND_LDAPAUTOCREATE: "true"
       ND_LDAPUSERNAMEATTR: "uid"
       ND_LDAPEMAILATTR: "mail"
       ND_LDAPNAMEATTR: "cn"
@@ -53,6 +53,10 @@ services:
 
       - "traefik.http.routers.navidrome.middlewares=authentik@docker"
 
+      - "authentik.io/enable=tru"
+      - "authentik.io/application=navidrome"
+      - "authentik.io/group=Medias"
+      - "authentik.io/icon=https://www.navidrome.org/favicon.ico"
 networks:
   homeserver_network:
     external: true

@@ -20,6 +20,8 @@ Toutes **informations** qui n'a pas ete traite doit etre transmise a nouveau
 
 ### Added
 - create a docker compose for authentik (LDAP system)
+- pass akadmin : changeme1234
+- doc for set up authentik
 
 ### Changed
 - Adapt the other services to use the SSO
@@ -28,6 +30,8 @@ ip authentik :
 ```text
 http://172.18.0.5:9000/
 ```
+Idk if pass authentik is for all machine, i think no because it supposed to be in data (.gitignore)
+you have the changepass_akadmin.sh to setup your pass.
 
 ## [0.0.1] - 2026-02-04
 
