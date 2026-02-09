@@ -1,2 +1,2 @@
-docker compose exec server ak changepassword akadmin
+docker compose exec authentik-server ak changepassword akadmin
 
